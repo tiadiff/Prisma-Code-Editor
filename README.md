@@ -85,11 +85,7 @@ Per eseguire il progetto sul tuo computer:
 
 ---
 
-## 📄 Licenza
-
-Distribuito sotto licenza MIT. Vedere `LICENSE` per maggiori informazioni.
-
----
+Feel free to improve it.
 
 <div align="center">
   <sub>Realizzato con ❤️ usando React e Vite</sub>
