@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prisma Code Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <!-- PrismJS Core Style (Base) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              editor: {
+                bg: '#1e1e1e', // VS Code Dark bg
+                sidebar: '#252526',
+                gutter: '#1e1e1e',
+                active: '#37373d',
+                border: '#333333',
+                widget: '#252526',
+              }
+            }
+          },
+        },
+      }
+    </script>
+    <style>
+      /* --- Custom Scrollbar --- */
+      ::-webkit-scrollbar {
+        width: 12px;
+        height: 12px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #1e1e1e;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #424242;
+        border: 2px solid #1e1e1e;
+        border-radius: 10px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #4f4f4f;
+      }
+      
+      /* --- Editor Layout --- */
+      .code-editor-container {
+        position: relative;
+        overflow: hidden;
+        font-family: 'JetBrains Mono', monospace; /* Ensure font is everywhere */
+        font-size: 14px;
+        line-height: 24px; /* STRICT HEIGHT ENFORCEMENT */
+      }
+
+      .editor-gutter {
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 3.5rem; /* 56px */
+        background-color: #1e1e1e;
+        color: #858585;
+        z-index: 10;
+        overflow: hidden;
+        text-align: right;
+        padding-right: 1rem;
+        border-right: 1px solid #333;
+        user-select: none;
+        box-sizing: border-box;
+      }
+
+      .code-scroller {
+        position: absolute;
+        top: 0;
+        left: 3.5rem; /* Matches gutter width */
+        right: 0;
+        bottom: 0;
+        overflow: auto;
+        background-color: #1e1e1e;
+      }
+
+      /* Container for code layers to ensure perfect stacking */
+      .code-layer-container {
+        position: relative;
+        min-height: 100%;
+        min-width: 100%;
+        box-sizing: border-box;
+      }
+
+      .code-input, .code-output {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        margin: 0;
+        border: none;
+        background: transparent;
+        
+        /* Critical Font Alignments */
+        font-family: 'JetBrains Mono', monospace !important;
+        /* Removed !important from size/height to allow React inline styles to override */
+        letter-spacing: 0px !important;
+        word-spacing: normal !important;
+        
+        tab-size: 2;
+        white-space: pre;
+        overflow: hidden;
+        box-sizing: border-box;
+        padding: 0 0 0 4px !important; /* Explicit padding matching */
+      }
+
+      /* Input Layer (Editable) */
+      .code-input {
+        z-index: 1;
+        color: transparent;
+        caret-color: #528bff; /* Bright Blue Caret */
+        resize: none;
+        outline: none;
+        /* Fix for some browser defaults adding padding/margin to textareas */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      /* Often textareas have slight different rendering than divs. This helps align them. */
+      .code-input::selection {
+        background: rgba(55, 55, 61, 0.3); /* Subtle selection in input to match logic if needed */
+        color: transparent;
+      }
+
+      /* Output Layer (Syntax Highlight) */
+      .code-output {
+        z-index: 0;
+        pointer-events: none;
+        color: #abb2bf; /* Base text color */
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* Autocomplete Widget */
+      .autocomplete-widget {
+        position: absolute;
+        background-color: #252526;
+        border: 1px solid #454545;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        border-radius: 4px;
+        z-index: 50;
+        width: 250px;
+        max-height: 200px;
+        overflow-y: auto;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 12px;
+      }
+      
+      .autocomplete-item {
+        padding: 4px 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        color: #cccccc;
+      }
+      
+      .autocomplete-item.selected {
+        background-color: #094771; /* VS Code selection blue */
+        color: white;
+      }
+      
+      .autocomplete-item .icon {
+        width: 14px;
+        height: 14px;
+        margin-right: 8px;
+        display: inline-block;
+        text-align: center;
+        line-height: 14px;
+        font-weight: bold;
+      }
+      
+      .icon.tag { color: #e06c75; }
+      .icon.property { color: #56b6c2; }
+      .icon.keyword { color: #c678dd; }
+      .icon.snippet { color: #d19a66; }
+
+
+      /* --- Syntax Highlighting Overrides (VS Code One Dark Style) --- */
+      
+      /* Comments */
+      .token.comment,
+      .token.prolog,
+      .token.doctype,
+      .token.cdata {
+        color: #7f848e;
+        font-style: italic;
+      }
+
+      /* Punctuation */
+      .token.punctuation {
+        color: #abb2bf;
+      }
+
+      /* Tags (HTML) */
+      .token.tag, 
+      .token.tag .token.punctuation {
+        color: #e06c75; /* Red/Pink */
+      }
+
+      /* Attributes (HTML) */
+      .token.attr-name {
+        color: #d19a66; /* Orange */
+      }
+      .token.attr-value {
+        color: #98c379; /* Green */
+      }
+
+      /* Strings */
+      .token.string {
+        color: #98c379; /* Green */
+      }
+
+      /* Keywords (JS/CSS) */
+      .token.keyword, 
+      .token.atrule, 
+      .token.selector {
+        color: #c678dd; /* Purple */
+      }
+
+      /* Functions */
+      .token.function, 
+      .token.class-name {
+        color: #61afef; /* Blue */
+      }
+
+      /* Numbers/Booleans */
+      .token.number, 
+      .token.boolean {
+        color: #d19a66; /* Orange */
+      }
+
+      /* CSS Properties */
+      .token.property {
+        color: #abb2bf; /* Standard text color usually, or cyan */
+      }
+      .language-css .token.string {
+         color: #98c379;
+      }
+
+      /* Operator */
+      .token.operator {
+        color: #56b6c2; /* Cyan */
+      }
+
+      /* Prism Generic Fixes */
+      code[class*="language-"], pre[class*="language-"] {
+        font-family: 'JetBrains Mono', monospace !important;
+        /* Removed font-size and line-height overrides */
+        margin: 0 !important;
+        padding: 0 !important;
+        background: transparent !important;
+        text-shadow: none !important;
+        letter-spacing: 0px !important;
+        word-spacing: normal !important;
+      }
+    </style>
+
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
+    "prismjs/": "https://aistudiocdn.com/prismjs@^1.30.0/",
+    "prismjs": "https://aistudiocdn.com/prismjs@^1.30.0"
+  }
+}
+</script>
+  <script type="module" crossorigin src="./assets/index-CIRoGn1m.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-C6G_3qQV.css">
+</head>
+  <body class="bg-gray-900 text-white h-screen overflow-hidden">
+    <div id="root"></div>
+</body>
+</html>
