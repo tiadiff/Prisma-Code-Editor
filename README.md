@@ -2,8 +2,6 @@
 
 <img width="165" height="37" alt="Screenshot 2025-11-21 233351" src="https://github.com/user-attachments/assets/828ffd4a-7eec-4607-b3a7-ba73551fb170" />
 
-![Prisma Editor Banner](https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6)
-
 > **Prisma Code Editor** è un editor di codice web frontend leggero, progettato per offrire un'esperienza di sviluppo immediata con evidenziazione della sintassi, formattazione automatica e anteprima live, il tutto senza dipendenze da API esterne.
 
 Realizzato con **React**, **TypeScript** e **Vite**, Prisma offre un ambiente sandbox sicuro e veloce per prototipare idee in HTML, CSS e JavaScript.
